@@ -13,11 +13,11 @@ typedef enum {
 USBH_HandleTypeDef hUSBHost;
 MSC_ApplicationTypeDef Appli_state = APPLICATION_IDLE;
 
-char USBDISKPath[4];             /* 串行Flash逻辑设备路径 */
-FATFS fs;													/* FatFs文件系统对象 */
-FIL file;													/* 文件对象 */
-FRESULT f_res;                    /* 文件操作结果 */
-UINT fnum;            					  /* 文件成功读写数量 */
+char USBDISKPath[4];
+FATFS fs;
+FIL file;
+FRESULT f_res;
+UINT fnum;
 
 extern Diskio_drvTypeDef  USBH_Driver;
 extern HCD_HandleTypeDef hhcd_USB_OTG_FS;
@@ -126,30 +126,27 @@ void STMFLASH_Write(uint32_t WriteAddr,uint32_t *pBuffer,uint32_t NumToWrite)
 	uint32_t endaddr=0;	
 	if(WriteAddr<0x08000000||WriteAddr%4)return;	//非法地址
 		
-	HAL_FLASH_Unlock();             //解锁	
+	HAL_FLASH_Unlock();
 	addrx=WriteAddr;				//写入的起始地址
 	endaddr=WriteAddr+NumToWrite*4;	//写入的结束地址
-		
-	if(addrx<0X1FFF0000)
+
+	while(addrx<endaddr)//擦除扇区
 	{
-		while(addrx<endaddr)
-		{
-			if (*(volatile uint32_t *)addrx!=0XFFFFFFFF)		//	 if(STMFLASH_ReadWord(addrx)!=0XFFFFFFFF)
-			{   
-				FlashEraseInit.TypeErase=FLASH_TYPEERASE_SECTORS;       //擦除类型，扇区擦除 
-				FlashEraseInit.Sector=GetSector(addrx);   //要擦除的扇区
-				FlashEraseInit.NbSectors=1;                             //一次只擦除一个扇区
-				FlashEraseInit.VoltageRange=FLASH_VOLTAGE_RANGE_3;      //电压范围，VCC=2.7~3.6V之间!!
-				if(HAL_FLASHEx_Erase(&FlashEraseInit,&SectorError)!=HAL_OK) 
-				{
-					break;//发生错误了	
-				}
-			}else addrx+=4;
-		}
+		if (*(volatile uint32_t *)addrx!=0XFFFFFFFF)		//	 if(STMFLASH_ReadWord(addrx)!=0XFFFFFFFF)
+		{   
+			FlashEraseInit.TypeErase=FLASH_TYPEERASE_SECTORS;       //擦除类型，扇区擦除 
+			FlashEraseInit.Sector=GetSector(addrx);   //要擦除的扇区
+			FlashEraseInit.NbSectors=1;                             //一次只擦除一个扇区
+			FlashEraseInit.VoltageRange=FLASH_VOLTAGE_RANGE_3;      //电压范围，VCC=2.7~3.6V之间!!
+			if(HAL_FLASHEx_Erase(&FlashEraseInit,&SectorError)!=HAL_OK) 
+			{
+				break;
+			}
+		}else addrx+=4;
 	}
 
-	 while(WriteAddr<endaddr)//写数据
-	 {
+	while(WriteAddr<endaddr)//写数据
+	{
 		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,WriteAddr,*pBuffer)!=HAL_OK)//写入数据
 		{ 
 			break;	//写入异常
@@ -157,11 +154,11 @@ void STMFLASH_Write(uint32_t WriteAddr,uint32_t *pBuffer,uint32_t NumToWrite)
 		WriteAddr+=4;
 		pBuffer++;
 	}  
-	HAL_FLASH_Lock();           //上锁
+	HAL_FLASH_Lock();
 } 
 
 
-uint32_t iapbuf[512]; 	//2K字节缓存 
+uint32_t iapbuf[512];
 void iap_write_appbin(uint32_t appxaddr,uint8_t *appbuf,uint16_t appsize)
 {
 	uint32_t t;
