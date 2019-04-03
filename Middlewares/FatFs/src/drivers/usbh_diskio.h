@@ -47,7 +47,7 @@
 /* Define to prevent recursive inclusion -------------------------------------*/
 #ifndef __USBH_DISKIO_H
 #define __USBH_DISKIO_H
-
+#include "ff_gen_drv.h"
 /* Includes ------------------------------------------------------------------*/
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/

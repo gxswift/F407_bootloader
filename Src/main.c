@@ -1,13 +1,8 @@
 #include "stm32f4xx_hal.h"
-#include "usart/bsp_debug_usart.h"
-#include "led/bsp_led.h"
 #include "usbh_core.h"
 #include "usbh_msc.h" 
 #include "ff.h"
 #include "ff_gen_drv.h"
-#include "key/bsp_key.h"
-#include "stmflash/stm_flash.h"
-#include "rtc.h"
 
 typedef enum {
   APPLICATION_IDLE = 0,  
@@ -26,8 +21,39 @@ UINT fnum;            					  /* 文件成功读写数量 */
 
 extern Diskio_drvTypeDef  USBH_Driver;
 extern HCD_HandleTypeDef hhcd_USB_OTG_FS;
+//-------------------------------------------------------------------------------------------------------------------------
+RTC_HandleTypeDef hrtc;
 
+void MX_RTC_Init(void)
+{
+  hrtc.Instance = RTC;
+  hrtc.Init.HourFormat = RTC_HOURFORMAT_24;
+  hrtc.Init.AsynchPrediv = 127;
+  hrtc.Init.SynchPrediv = 255;
+  hrtc.Init.OutPut = RTC_OUTPUT_DISABLE;
+  hrtc.Init.OutPutPolarity = RTC_OUTPUT_POLARITY_HIGH;
+  hrtc.Init.OutPutType = RTC_OUTPUT_TYPE_OPENDRAIN;
+  if (HAL_RTC_Init(&hrtc) != HAL_OK)
+  {
+  }
+}
 
+void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)
+{
+  if(rtcHandle->Instance==RTC)
+  {
+    __HAL_RCC_RTC_ENABLE();
+  }
+}
+
+void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
+{
+  if(rtcHandle->Instance==RTC)
+  {
+    __HAL_RCC_RTC_DISABLE();
+  }
+} 
+//-------------------------------------------------------------------------------------------------------------------------
 void SystemClock_Config(void)
 {
 
@@ -63,20 +89,76 @@ void SystemClock_Config(void)
   HAL_NVIC_SetPriority(SysTick_IRQn, 0, 0);
 }
 //-------------------------------------------------------------------------------------------------------------------------
-typedef  void (*pFunction)(void);  
 #define FLASH_APP1_ADDR		0x08010000
 
 void iap_load_app(uint32_t appxaddr)
 {
 	if(((*(volatile uint32_t*)appxaddr)&0xFF000000)==0x20000000
-		|| (((*(__IO uint32_t *) appxaddr) & 0xFF000000) ==0x10000000))	//检查栈顶地址是否合法.
+		|| (((*(__IO uint32_t *) appxaddr) & 0xFF000000) ==0x10000000))
 	{ 
     __set_MSP(*(volatile uint32_t*)appxaddr);
-		((pFunction)*(volatile uint32_t*)(appxaddr+4))();
+		((void(*)(void))*(volatile uint32_t*)(appxaddr+4))();
 	}
 }		
 
+//-------------------------------------------------------------------------------------------------------------------------
+static uint32_t GetSector(uint32_t Address)
+{
+  if(Address < ADDR_FLASH_SECTOR_1)return FLASH_SECTOR_0;  
+  else if(Address < ADDR_FLASH_SECTOR_2)return FLASH_SECTOR_1;  
+  else if(Address < ADDR_FLASH_SECTOR_3)return FLASH_SECTOR_2;  
+  else if(Address < ADDR_FLASH_SECTOR_4)return FLASH_SECTOR_3;  
+  else if(Address < ADDR_FLASH_SECTOR_5)return FLASH_SECTOR_4;  
+  else if(Address < ADDR_FLASH_SECTOR_6)return FLASH_SECTOR_5;  
+  else if(Address < ADDR_FLASH_SECTOR_7)return FLASH_SECTOR_6;  
+  else if(Address < ADDR_FLASH_SECTOR_8)return FLASH_SECTOR_7;  
+  else if(Address < ADDR_FLASH_SECTOR_9)return FLASH_SECTOR_8;  
+  else if(Address < ADDR_FLASH_SECTOR_10)return FLASH_SECTOR_9;  
+  else if(Address < ADDR_FLASH_SECTOR_11)return FLASH_SECTOR_10;  
+  else return FLASH_SECTOR_11;  
+}
+	
+void STMFLASH_Write(uint32_t WriteAddr,uint32_t *pBuffer,uint32_t NumToWrite)	
+{ 
+	FLASH_EraseInitTypeDef FlashEraseInit;
+	uint32_t SectorError=0;
+	uint32_t addrx=0;
+	uint32_t endaddr=0;	
+	if(WriteAddr<0x08000000||WriteAddr%4)return;	//非法地址
+		
+	HAL_FLASH_Unlock();             //解锁	
+	addrx=WriteAddr;				//写入的起始地址
+	endaddr=WriteAddr+NumToWrite*4;	//写入的结束地址
+		
+	if(addrx<0X1FFF0000)
+	{
+		while(addrx<endaddr)
+		{
+			if (*(volatile uint32_t *)addrx!=0XFFFFFFFF)		//	 if(STMFLASH_ReadWord(addrx)!=0XFFFFFFFF)
+			{   
+				FlashEraseInit.TypeErase=FLASH_TYPEERASE_SECTORS;       //擦除类型，扇区擦除 
+				FlashEraseInit.Sector=GetSector(addrx);   //要擦除的扇区
+				FlashEraseInit.NbSectors=1;                             //一次只擦除一个扇区
+				FlashEraseInit.VoltageRange=FLASH_VOLTAGE_RANGE_3;      //电压范围，VCC=2.7~3.6V之间!!
+				if(HAL_FLASHEx_Erase(&FlashEraseInit,&SectorError)!=HAL_OK) 
+				{
+					break;//发生错误了	
+				}
+			}else addrx+=4;
+		}
+	}
 
+	 while(WriteAddr<endaddr)//写数据
+	 {
+		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,WriteAddr,*pBuffer)!=HAL_OK)//写入数据
+		{ 
+			break;	//写入异常
+		}
+		WriteAddr+=4;
+		pBuffer++;
+	}  
+	HAL_FLASH_Lock();           //上锁
+} 
 
 
 uint32_t iapbuf[512]; 	//2K字节缓存 
@@ -104,14 +186,77 @@ void iap_write_appbin(uint32_t appxaddr,uint8_t *appbuf,uint16_t appsize)
 	} 
 	if(i)STMFLASH_Write(fwaddr,iapbuf,i);//将最后的一些内容字节写进去.  
 }
+//-------------------------------------------------------------------------------------------------------------------------
+UART_HandleTypeDef huart1;
 
+void MX_USART1_UART_Init(void)
+{
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+  }
+}
 
+void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
+  if(uartHandle->Instance==USART1)
+  {
+    __HAL_RCC_USART1_CLK_ENABLE();
+    __HAL_RCC_GPIOB_CLK_ENABLE();
+    GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+    GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+    GPIO_InitStruct.Alternate = GPIO_AF7_USART1;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+  }
+}
 
+void HAL_UART_MspDeInit(UART_HandleTypeDef* uartHandle)
+{
+  if(uartHandle->Instance==USART1)
+  {
+    __HAL_RCC_USART1_CLK_DISABLE();
+    HAL_GPIO_DeInit(GPIOB, GPIO_PIN_6|GPIO_PIN_7);
+  }
+} 
 
+int fputc(int ch, FILE *f)
+{
+  HAL_UART_Transmit(&huart1, (uint8_t *)&ch, 1, 50);
+  return ch;
+}
 
+void MX_GPIO_Init(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct = {0};
 
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOH_CLK_ENABLE();
+  __HAL_RCC_GPIOB_CLK_ENABLE();
 
+  HAL_GPIO_WritePin(GPIOE, GPIO_PIN_6|GPIO_PIN_7, GPIO_PIN_RESET);
 
+  GPIO_InitStruct.Pin = GPIO_PIN_2|GPIO_PIN_0|GPIO_PIN_1;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = GPIO_PIN_6|GPIO_PIN_7;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+}
+//-------------------------------------------------------------------------------------------------------------------------
 #define ADDLOG	1
 
 char * Week[]={
@@ -173,8 +318,7 @@ void USB_IAP()
 			f_close(&file);
 			break; 
 		}
-		iap_write_appbin(addrx,Receive_dat_buffer,br);//将读取的数据写入Flash中
-	//	printf("address%x,size%d\r\n",addrx,br);
+		iap_write_appbin(addrx,Receive_dat_buffer,br);
 		printf("Write%4d%%\r\n",Read_data*100/file_size);
 		addrx+=2048;//偏移2048  512*4=2048
 	}
@@ -186,7 +330,7 @@ void USB_IAP()
 			Log();
 		#endif
 		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
-		HAL_UART_MspDeInit(&husart_debug);
+		HAL_UART_MspDeInit(&huart1);
 		//NVIC_SystemReset();
 		iap_load_app(FLASH_APP1_ADDR);//执行FLASH APP代码
 	}else 
@@ -201,7 +345,7 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
   { 
     case HOST_USER_SELECT_CONFIGURATION:
       break;
-      
+		
     case HOST_USER_DISCONNECTION:
       Appli_state = APPLICATION_DISCONNECT;
       
@@ -223,16 +367,14 @@ int main(void)
 {
   HAL_Init();
   SystemClock_Config();
-  LED_GPIO_Init();
-  KEY_GPIO_Init();
-	MX_DEBUG_USART_Init();
+	MX_GPIO_Init();
+	MX_USART1_UART_Init();
 	
 	if (HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_0) == 1)
 	{
 			printf("Jump to APP\r\n");
 			iap_load_app(FLASH_APP1_ADDR);//执行FLASH APP代码
 	}
-
 	#if ADDLOG
 			MX_RTC_Init();
 	#endif
