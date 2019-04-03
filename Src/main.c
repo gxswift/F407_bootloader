@@ -124,33 +124,29 @@ void STMFLASH_Write(uint32_t WriteAddr,uint32_t *pBuffer,uint32_t NumToWrite)
 	uint32_t SectorError=0;
 	uint32_t addrx=0;
 	uint32_t endaddr=0;	
-	if(WriteAddr<0x08000000||WriteAddr%4)return;	//非法地址
+	if(WriteAddr<0x08000000||WriteAddr%4)return;
 		
 	HAL_FLASH_Unlock();
-	addrx=WriteAddr;				//写入的起始地址
-	endaddr=WriteAddr+NumToWrite*4;	//写入的结束地址
+	addrx=WriteAddr;
+	endaddr=WriteAddr+NumToWrite*4;
 
 	while(addrx<endaddr)//擦除扇区
 	{
-		if (*(volatile uint32_t *)addrx!=0XFFFFFFFF)		//	 if(STMFLASH_ReadWord(addrx)!=0XFFFFFFFF)
+		if (*(volatile uint32_t *)addrx!=0XFFFFFFFF)
 		{   
-			FlashEraseInit.TypeErase=FLASH_TYPEERASE_SECTORS;       //擦除类型，扇区擦除 
-			FlashEraseInit.Sector=GetSector(addrx);   //要擦除的扇区
-			FlashEraseInit.NbSectors=1;                             //一次只擦除一个扇区
-			FlashEraseInit.VoltageRange=FLASH_VOLTAGE_RANGE_3;      //电压范围，VCC=2.7~3.6V之间!!
+			FlashEraseInit.TypeErase=FLASH_TYPEERASE_SECTORS;
+			FlashEraseInit.Sector=GetSector(addrx);
+			FlashEraseInit.NbSectors=1; 
+			FlashEraseInit.VoltageRange=FLASH_VOLTAGE_RANGE_3;
 			if(HAL_FLASHEx_Erase(&FlashEraseInit,&SectorError)!=HAL_OK) 
-			{
 				break;
-			}
 		}else addrx+=4;
 	}
 
-	while(WriteAddr<endaddr)//写数据
+	while(WriteAddr<endaddr)
 	{
 		if(HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,WriteAddr,*pBuffer)!=HAL_OK)//写入数据
-		{ 
-			break;	//写入异常
-		}
+			break;
 		WriteAddr+=4;
 		pBuffer++;
 	}  
@@ -164,7 +160,7 @@ void iap_write_appbin(uint32_t appxaddr,uint8_t *appbuf,uint16_t appsize)
 	uint32_t t;
 	uint16_t i=0;
 	uint32_t temp;
-	uint32_t fwaddr=appxaddr;//当前写入的地址
+	uint32_t fwaddr=appxaddr;
 	uint8_t *dfu=appbuf;
 	for(t=0;t<appsize;t+=4)
 	{						   
@@ -172,16 +168,16 @@ void iap_write_appbin(uint32_t appxaddr,uint8_t *appbuf,uint16_t appsize)
 		temp|=(uint32_t)dfu[2]<<16;    
 		temp|=(uint32_t)dfu[1]<<8;
 		temp|=(uint32_t)dfu[0];	  
-		dfu+=4;//偏移4个字节
+		dfu+=4;
 		iapbuf[i++]=temp;	    
 		if(i==512)
 		{
 			i=0; 
 			STMFLASH_Write(fwaddr,iapbuf,512);
-			fwaddr+=2048;//偏移2048  512*4=2048
+			fwaddr+=2048;
 		}   
 	} 
-	if(i)STMFLASH_Write(fwaddr,iapbuf,i);//将最后的一些内容字节写进去.  
+	if(i)STMFLASH_Write(fwaddr,iapbuf,i); 
 }
 //-------------------------------------------------------------------------------------------------------------------------
 UART_HandleTypeDef huart1;
@@ -308,7 +304,7 @@ void USB_IAP()
 	while(1)
 	{
 		f_res = f_read(&file, Receive_dat_buffer, 2048, (UINT*)&br);
-		Read_data+=br;   //读取的总字节数
+		Read_data+=br;
 		if (f_res || br == 0) 
 		{
 			printf("Total:%dByte\r\n",Read_data);
@@ -317,10 +313,10 @@ void USB_IAP()
 		}
 		iap_write_appbin(addrx,Receive_dat_buffer,br);
 		printf("Write%4d%%\r\n",Read_data*100/file_size);
-		addrx+=2048;//偏移2048  512*4=2048
+		addrx+=2048;
 	}
 	//-----------------------------------
-	if(((*(volatile uint32_t*)(FLASH_APP1_ADDR+4))&0xFF000000)==0x08000000)//判断是否为0X08XXXXXX.
+	if(((*(volatile uint32_t*)(FLASH_APP1_ADDR+4))&0xFF000000)==0x08000000)
 	{	 
 		printf("Upgrade successed ,jump to App\r\n");
 		#if ADDLOG
@@ -329,7 +325,7 @@ void USB_IAP()
 		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
 		HAL_UART_MspDeInit(&huart1);
 		//NVIC_SystemReset();
-		iap_load_app(FLASH_APP1_ADDR);//执行FLASH APP代码
+		iap_load_app(FLASH_APP1_ADDR);
 	}else 
 	{
 			printf("Upgrade failed\r\n");	   
@@ -370,7 +366,7 @@ int main(void)
 	if (HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_0) == 1)
 	{
 			printf("Jump to APP\r\n");
-			iap_load_app(FLASH_APP1_ADDR);//执行FLASH APP代码
+			iap_load_app(FLASH_APP1_ADDR);
 	}
 	#if ADDLOG
 			MX_RTC_Init();
