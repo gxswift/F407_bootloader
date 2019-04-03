@@ -49,9 +49,6 @@ RTC_HandleTypeDef hrtc;
 /* RTC init function */
 void MX_RTC_Init(void)
 {
-  RTC_TimeTypeDef sTime;
-  RTC_DateTypeDef sDate;
-
     /**Initialize RTC Only 
     */
   hrtc.Instance = RTC;
@@ -65,49 +62,6 @@ void MX_RTC_Init(void)
   {
  //   _Error_Handler(__FILE__, __LINE__);
   }
-
-    /**Initialize RTC and set the Time and Date 
-    */
-//   if (HAL_RTCEx_BKUPRead(&hrtc, RTC_BKP_DR0) != 0xBBBB)
-//  {
-//    /* default RTC Time*/
-//		sTime.Hours = 10;
-//		sTime.Minutes = 40;
-//		sTime.Seconds = 00;
-//		sTime.DayLightSaving = RTC_DAYLIGHTSAVING_NONE;
-//		sTime.StoreOperation = RTC_STOREOPERATION_RESET;
-//		if (HAL_RTC_SetTime(&hrtc, &sTime, RTC_FORMAT_BIN) != HAL_OK)
-//		{
-//	//		_Error_Handler(__FILE__, __LINE__);
-//		}
-
-//		sDate.WeekDay = RTC_WEEKDAY_FRIDAY;
-//		sDate.Month = RTC_MONTH_JANUARY;
-//		sDate.Date = 4;
-//		sDate.Year = 19;
-
-//		if (HAL_RTC_SetDate(&hrtc, &sDate, RTC_FORMAT_BIN) != HAL_OK)
-//		{
-//		//	_Error_Handler(__FILE__, __LINE__);
-//		}
-//		HAL_RTCEx_BKUPWrite(&hrtc,RTC_BKP_DR0, 0xBBBB);
-
-//  }
-//  else
-//  {
-//    /* Power:SET */
-//    if (__HAL_RCC_GET_FLAG(RCC_FLAG_PORRST) != RESET)
-//    {
-//      printf("Power Reset\n");
-//    }
-//    /* Reset IO:SET */
-//    if (__HAL_RCC_GET_FLAG(RCC_FLAG_PINRST) != RESET)
-//    {
-//      printf("IO Reset\n");
-//    }
-//    /* clear reset flags*/
-//    __HAL_RCC_CLEAR_RESET_FLAGS();
-//  }
 }
 
 void HAL_RTC_MspInit(RTC_HandleTypeDef* rtcHandle)

@@ -4,35 +4,20 @@
 
 static uint32_t GetSector(uint32_t Address)
 {
-  uint32_t sector = 0;
-  if(Address < ADDR_FLASH_SECTOR_1)sector = FLASH_SECTOR_0;  
-  else if(Address < ADDR_FLASH_SECTOR_2)sector = FLASH_SECTOR_1;  
-  else if(Address < ADDR_FLASH_SECTOR_3)sector = FLASH_SECTOR_2;  
-  else if(Address < ADDR_FLASH_SECTOR_4)sector = FLASH_SECTOR_3;  
-  else if(Address < ADDR_FLASH_SECTOR_5)sector = FLASH_SECTOR_4;  
-  else if(Address < ADDR_FLASH_SECTOR_6)sector = FLASH_SECTOR_5;  
-  else if(Address < ADDR_FLASH_SECTOR_7)sector = FLASH_SECTOR_6;  
-  else if(Address < ADDR_FLASH_SECTOR_8)sector = FLASH_SECTOR_7;  
-  else if(Address < ADDR_FLASH_SECTOR_9)sector = FLASH_SECTOR_8;  
-  else if(Address < ADDR_FLASH_SECTOR_10)sector = FLASH_SECTOR_9;  
-  else if(Address < ADDR_FLASH_SECTOR_11) sector = FLASH_SECTOR_10;  
-  else sector = FLASH_SECTOR_11;  
-  return sector;
+  if(Address < ADDR_FLASH_SECTOR_1)return FLASH_SECTOR_0;  
+  else if(Address < ADDR_FLASH_SECTOR_2)return FLASH_SECTOR_1;  
+  else if(Address < ADDR_FLASH_SECTOR_3)return FLASH_SECTOR_2;  
+  else if(Address < ADDR_FLASH_SECTOR_4)return FLASH_SECTOR_3;  
+  else if(Address < ADDR_FLASH_SECTOR_5)return FLASH_SECTOR_4;  
+  else if(Address < ADDR_FLASH_SECTOR_6)return FLASH_SECTOR_5;  
+  else if(Address < ADDR_FLASH_SECTOR_7)return FLASH_SECTOR_6;  
+  else if(Address < ADDR_FLASH_SECTOR_8)return FLASH_SECTOR_7;  
+  else if(Address < ADDR_FLASH_SECTOR_9)return FLASH_SECTOR_8;  
+  else if(Address < ADDR_FLASH_SECTOR_10)return FLASH_SECTOR_9;  
+  else if(Address < ADDR_FLASH_SECTOR_11)return FLASH_SECTOR_10;  
+  else return FLASH_SECTOR_11;  
 }
-
-
-
-void STMFLASH_Write_NoCheck ( uint32_t WriteAddr, uint16_t * pBuffer, uint16_t NumToWrite )   
-{ 			 		 
-	uint16_t i;	
-	for(i=0;i<NumToWrite;i++)
-	{
-		HAL_FLASH_Program(FLASH_TYPEPROGRAM_HALFWORD,WriteAddr,pBuffer[i]);
-	  WriteAddr+=2; 
-	}  
-} 
-
-		
+	
 void STMFLASH_Write(uint32_t WriteAddr,uint32_t *pBuffer,uint32_t NumToWrite)	
 { 
 	FLASH_EraseInitTypeDef FlashEraseInit;
