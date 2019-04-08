@@ -54,6 +54,544 @@ void HAL_RTC_MspDeInit(RTC_HandleTypeDef* rtcHandle)
   }
 } 
 //-------------------------------------------------------------------------------------------------------------------------
+SRAM_HandleTypeDef hlcd;
+
+
+static void HAL_FSMC_LCD_MspInit(void)
+{
+  GPIO_InitTypeDef GPIO_InitStruct;	
+ 
+	__HAL_RCC_GPIOG_CLK_ENABLE();
+  __HAL_RCC_GPIOF_CLK_ENABLE();
+  __HAL_RCC_GPIOE_CLK_ENABLE();
+  __HAL_RCC_GPIOD_CLK_ENABLE();
+  __HAL_RCC_GPIOC_CLK_ENABLE();
+	
+  __HAL_RCC_FSMC_CLK_ENABLE();
+
+  /** FSMC GPIO Configuration  
+  PF0   ------> FSMC_A0
+  PE7   ------> FSMC_D4
+  PE8   ------> FSMC_D5
+  PE9   ------> FSMC_D6
+  PE10   ------> FSMC_D7
+  PE11   ------> FSMC_D8
+  PE12   ------> FSMC_D9
+  PE13   ------> FSMC_D10
+  PE14   ------> FSMC_D11
+  PE15   ------> FSMC_D12
+  PD8   ------> FSMC_D13
+  PD9   ------> FSMC_D14
+  PD10   ------> FSMC_D15
+  PD14   ------> FSMC_D0
+  PD15   ------> FSMC_D1
+  PD0   ------> FSMC_D2
+  PD1   ------> FSMC_D3
+  PD4   ------> FSMC_NOE
+  PD5   ------> FSMC_NWE
+  PG12   ------> FSMC_NE4
+  */
+  GPIO_InitStruct.Pin = FSMC_LCD_DC_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
+
+  HAL_GPIO_Init(FSMC_LCD_DC_PORT, &GPIO_InitStruct);
+  
+  GPIO_InitStruct.Pin = FSMC_LCD_CS_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  HAL_GPIO_Init(FSMC_LCD_CS_PORT, &GPIO_InitStruct);
+  
+  GPIO_InitStruct.Pin = GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
+                          |GPIO_PIN_15;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+
+  GPIO_InitStruct.Pin = GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_14 
+                          |GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4 
+                          |GPIO_PIN_5;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
+
+  HAL_GPIO_WritePin(FSMC_LCD_BK_PORT, FSMC_LCD_BK_PIN, GPIO_PIN_RESET);
+
+  GPIO_InitStruct.Pin = FSMC_LCD_BK_PIN;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FSMC;
+  HAL_GPIO_Init(FSMC_LCD_BK_PORT, &GPIO_InitStruct);
+}
+
+void HAL_SRAM_MspInit(SRAM_HandleTypeDef* hsram)
+{
+  HAL_FSMC_LCD_MspInit();
+}
+
+static void HAL_FSMC_LCD_MspDeInit(void)
+{
+  __HAL_RCC_FSMC_CLK_DISABLE();
+  
+  /** FSMC GPIO Configuration  
+  PF0   ------> FSMC_A0
+  PE7   ------> FSMC_D4
+  PE8   ------> FSMC_D5
+  PE9   ------> FSMC_D6
+  PE10   ------> FSMC_D7
+  PE11   ------> FSMC_D8
+  PE12   ------> FSMC_D9
+  PE13   ------> FSMC_D10
+  PE14   ------> FSMC_D11
+  PE15   ------> FSMC_D12
+  PD8   ------> FSMC_D13
+  PD9   ------> FSMC_D14
+  PD10   ------> FSMC_D15
+  PD14   ------> FSMC_D0
+  PD15   ------> FSMC_D1
+  PD0   ------> FSMC_D2
+  PD1   ------> FSMC_D3
+  PD4   ------> FSMC_NOE
+  PD5   ------> FSMC_NWE
+  PG12   ------> FSMC_NE4
+  */
+  HAL_GPIO_DeInit(GPIOE, GPIO_PIN_7|GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10 
+                          |GPIO_PIN_11|GPIO_PIN_12|GPIO_PIN_13|GPIO_PIN_14 
+                          |GPIO_PIN_15);
+
+  HAL_GPIO_DeInit(GPIOD, GPIO_PIN_8|GPIO_PIN_9|GPIO_PIN_10|GPIO_PIN_14 
+                          |GPIO_PIN_15|GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_4 
+                          |GPIO_PIN_5);
+  HAL_GPIO_DeInit(FSMC_LCD_DC_PORT, FSMC_LCD_DC_PIN);
+  HAL_GPIO_DeInit(FSMC_LCD_CS_PORT, FSMC_LCD_CS_PIN);
+}
+
+void HAL_SRAM_MspDeInit(SRAM_HandleTypeDef* hsram)
+{
+  HAL_FSMC_LCD_MspDeInit();
+}
+
+void MX_FSMC_Init(void)
+{
+  FSMC_NORSRAM_TimingTypeDef Timing;
+
+  /* 配置FSMC参数 */
+  hlcd.Instance = FSMC_NORSRAM_DEVICE;
+  hlcd.Extended = FSMC_NORSRAM_EXTENDED_DEVICE;
+
+  hlcd.Init.NSBank = FSMC_LCD_BANKx;
+  hlcd.Init.DataAddressMux = FSMC_DATA_ADDRESS_MUX_DISABLE;
+  hlcd.Init.MemoryType = FSMC_MEMORY_TYPE_SRAM;
+  hlcd.Init.MemoryDataWidth = FSMC_NORSRAM_MEM_BUS_WIDTH_16;
+  hlcd.Init.BurstAccessMode = FSMC_BURST_ACCESS_MODE_DISABLE;
+  hlcd.Init.WaitSignalPolarity = FSMC_WAIT_SIGNAL_POLARITY_LOW;
+  hlcd.Init.WrapMode = FSMC_WRAP_MODE_DISABLE;
+  hlcd.Init.WaitSignalActive = FSMC_WAIT_TIMING_BEFORE_WS;
+  hlcd.Init.WriteOperation = FSMC_WRITE_OPERATION_ENABLE;
+  hlcd.Init.WaitSignal = FSMC_WAIT_SIGNAL_DISABLE;
+  hlcd.Init.ExtendedMode = FSMC_EXTENDED_MODE_DISABLE;
+  hlcd.Init.AsynchronousWait = FSMC_ASYNCHRONOUS_WAIT_DISABLE;
+  hlcd.Init.WriteBurst = FSMC_WRITE_BURST_DISABLE;
+  hlcd.Init.PageSize = FSMC_PAGE_SIZE_NONE;
+  
+  Timing.AddressSetupTime      = 0x02; //地址建立时间
+  Timing.AddressHoldTime       = 0x00; //地址保持时间
+  Timing.DataSetupTime         = 0x05; //数据建立时间
+  Timing.BusTurnAroundDuration = 0x00;
+  Timing.CLKDivision           = 0x00;
+  Timing.DataLatency           = 0x00;
+  Timing.AccessMode = FSMC_ACCESS_MODE_A;
+  HAL_SRAM_Init(&hlcd, &Timing, &Timing);
+
+  /* Disconnect NADV */
+//  __HAL_AFIO_FSMCNADV_DISCONNECTED();
+}
+
+
+
+void LCD_SetDirection( uint8_t ucOption )
+{	
+/**
+  * Memory Access Control (36h)
+  * This command defines read/write scanning direction of the frame memory.
+  *
+  * These 3 bits control the direction from the MPU to memory write/read.
+  *
+  * Bit  Symbol  Name  Description
+  * D7   MY  Row Address Order     -- 以X轴镜像
+  * D6   MX  Column Address Order  -- 以Y轴镜像
+  * D5   MV  Row/Column Exchange   -- X轴与Y轴交换
+  * D4   ML  Vertical Refresh Order  LCD vertical refresh direction control. 
+  *
+  * D3   BGR RGB-BGR Order   Color selector switch control
+  *      (0 = RGB color filter panel, 1 = BGR color filter panel )
+  * D2   MH  Horizontal Refresh ORDER  LCD horizontal refreshing direction control.
+  * D1   X   Reserved  Reserved
+  * D0   X   Reserved  Reserved
+  */
+	switch ( ucOption )
+	{
+		case 1:
+//   左上角->右下角 
+//	(0,0)	___ x(320)
+//	     |  
+//	     |
+//       |	y(480) 
+			LCD_WRITE_CMD(0x36); 
+			LCD_WRITE_DATA(0x08); 
+      
+			LCD_WRITE_CMD(0x2A); 
+			LCD_WRITE_DATA(0x00);	/* x start */	
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);  /* x end */	
+			LCD_WRITE_DATA(0x3F);
+
+			LCD_WRITE_CMD(0x2B); 
+			LCD_WRITE_DATA(0x00);	/* y start */  
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);	/* y end */   
+			LCD_WRITE_DATA(0xDF);					
+		  break;
+		
+		case 2:
+//		右上角-> 左下角
+//		y(320)___ (0,0)            
+//		         |
+//		         |
+//             |x(480)    
+			LCD_WRITE_CMD(0x36); 
+			LCD_WRITE_DATA(0x68);	
+			LCD_WRITE_CMD(0x2A); 
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);
+			LCD_WRITE_DATA(0xDF);	
+
+			LCD_WRITE_CMD(0x2B); 
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);
+			LCD_WRITE_DATA(0x3F);				
+		  break;
+		
+		case 3:
+//		右下角->左上角
+//		          |y(480)
+//		          |           
+//		x(320) ___|(0,0)		
+			LCD_WRITE_CMD(0x36); 
+			LCD_WRITE_DATA(0xC8);	
+			LCD_WRITE_CMD(0x2A); 
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);
+			LCD_WRITE_DATA(0x3F);	
+
+			LCD_WRITE_CMD(0x2B); 
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);
+			LCD_WRITE_DATA(0x3F);			  
+		  break;
+
+		case 4:
+//		左下角->右上角
+//		|x(480)
+//		|
+//		|___ y(320)					  
+			LCD_WRITE_CMD(0x36); 
+			LCD_WRITE_DATA(0xA8);	
+    
+			LCD_WRITE_CMD(0x2A); 
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);
+			LCD_WRITE_DATA(0xDF);	
+
+			LCD_WRITE_CMD(0x2B); 
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x00);
+			LCD_WRITE_DATA(0x01);
+			LCD_WRITE_DATA(0x3F);				
+	    break;		
+	}	
+	/* 开始向GRAM写入数据 */
+	LCD_WRITE_CMD (0x2C);	
+}
+
+static void ILI9488_REG_Config ( void )
+{
+  //************* Start Initial Sequence **********//
+  /* PGAMCTRL (Positive Gamma Control) (E0h) */
+  LCD_WRITE_CMD(0xE0);
+  LCD_WRITE_DATA(0x00);
+  LCD_WRITE_DATA(0x07);
+  LCD_WRITE_DATA(0x10);
+  LCD_WRITE_DATA(0x09);
+  LCD_WRITE_DATA(0x17);
+  LCD_WRITE_DATA(0x0B);
+  LCD_WRITE_DATA(0x41);
+  LCD_WRITE_DATA(0x89);
+  LCD_WRITE_DATA(0x4B);
+  LCD_WRITE_DATA(0x0A);
+  LCD_WRITE_DATA(0x0C);
+  LCD_WRITE_DATA(0x0E);
+  LCD_WRITE_DATA(0x18);
+  LCD_WRITE_DATA(0x1B);
+  LCD_WRITE_DATA(0x0F);
+
+  /* NGAMCTRL (Negative Gamma Control) (E1h)  */
+  LCD_WRITE_CMD(0XE1);
+  LCD_WRITE_DATA(0x00);
+  LCD_WRITE_DATA(0x17);
+  LCD_WRITE_DATA(0x1A);
+  LCD_WRITE_DATA(0x04);
+  LCD_WRITE_DATA(0x0E);
+  LCD_WRITE_DATA(0x06);
+  LCD_WRITE_DATA(0x2F);
+  LCD_WRITE_DATA(0x45);
+  LCD_WRITE_DATA(0x43);
+  LCD_WRITE_DATA(0x02);
+  LCD_WRITE_DATA(0x0A);
+  LCD_WRITE_DATA(0x09);
+  LCD_WRITE_DATA(0x32);
+  LCD_WRITE_DATA(0x36);
+  LCD_WRITE_DATA(0x0F);
+  
+  /* Adjust Control 3 (F7h)  */
+  LCD_WRITE_CMD(0XF7);
+  LCD_WRITE_DATA(0xA9);
+  LCD_WRITE_DATA(0x51);
+  LCD_WRITE_DATA(0x2C);
+  LCD_WRITE_DATA(0x82);/* DSI write DCS command, use loose packet RGB 666 */
+
+  /* Power Control 1 (C0h)  */
+  LCD_WRITE_CMD(0xC0);
+  LCD_WRITE_DATA(0x11);
+  LCD_WRITE_DATA(0x09);
+
+  /* Power Control 2 (C1h) */
+  LCD_WRITE_CMD(0xC1);
+  LCD_WRITE_DATA(0x41);
+
+  /* VCOM Control (C5h)  */
+  LCD_WRITE_CMD(0XC5);
+  LCD_WRITE_DATA(0x00);
+  LCD_WRITE_DATA(0x0A);
+  LCD_WRITE_DATA(0x80);
+
+  /* Frame Rate Control (In Normal Mode/Full Colors) (B1h) */
+  LCD_WRITE_CMD(0xB1);
+  LCD_WRITE_DATA(0xB0);
+  LCD_WRITE_DATA(0x11);
+
+  /* Display Inversion Control (B4h) */
+  LCD_WRITE_CMD(0xB4);
+  LCD_WRITE_DATA(0x02);
+
+  /* Display Function Control (B6h)  */
+  LCD_WRITE_CMD(0xB6);
+  LCD_WRITE_DATA(0x02);
+  LCD_WRITE_DATA(0x22);
+
+  /* Entry Mode Set (B7h)  */
+  LCD_WRITE_CMD(0xB7);
+  LCD_WRITE_DATA(0xc6);
+
+  /* HS Lanes Control (BEh) */
+  LCD_WRITE_CMD(0xBE);
+  LCD_WRITE_DATA(0x00);
+  LCD_WRITE_DATA(0x04);
+
+  /* Set Image Function (E9h)  */
+  LCD_WRITE_CMD(0xE9);
+  LCD_WRITE_DATA(0x00);
+ 
+  /* 设置屏幕方向和尺寸 */
+  LCD_SetDirection(LCD_DIRECTION);
+  
+  /* Interface Pixel Format (3Ah) */
+  LCD_WRITE_CMD(0x3A);
+  LCD_WRITE_DATA(0x55);/* 0x55 : 16 bits/pixel  */
+
+  /* Sleep Out (11h) */
+  LCD_WRITE_CMD(0x11);
+  HAL_Delay(120);
+  /* Display On */
+  LCD_WRITE_CMD(0x29);
+}
+
+void LCD_OpenWindow(uint16_t usX, uint16_t usY, uint16_t usWidth, uint16_t usHeight)
+{	
+	LCD_WRITE_CMD(0x2A ); 				       /* 设置X坐标 */
+	LCD_WRITE_DATA(usX>>8);	             /* 设置起始点：先高8位 */
+	LCD_WRITE_DATA(usX&0xff);	           /* 然后低8位 */
+	LCD_WRITE_DATA((usX+usWidth-1)>>8);  /* 设置结束点：先高8位 */
+	LCD_WRITE_DATA((usX+usWidth-1)&0xff);/* 然后低8位 */
+
+	LCD_WRITE_CMD(0x2B); 			           /* 设置Y坐标*/
+	LCD_WRITE_DATA(usY>>8);              /* 设置起始点：先高8位 */
+	LCD_WRITE_DATA(usY&0xff);            /* 然后低8位 */
+	LCD_WRITE_DATA((usY+usHeight-1)>>8); /* 设置结束点：先高8位 */
+	LCD_WRITE_DATA((usY+usHeight-1)&0xff);/* 然后低8位 */
+}
+
+
+static void LCD_SetCursor(uint16_t usX,uint16_t usY)	
+{
+	LCD_OpenWindow(usX,usY,1,1);
+}
+
+static __inline void LCD_FillColor ( uint32_t ulAmout_Point, uint16_t usColor )
+{
+	uint32_t i = 0;	
+	
+	LCD_WRITE_CMD ( 0x2C );	
+	
+	for ( i = 0; i < ulAmout_Point; i ++ )
+		LCD_WRITE_DATA ( usColor );	
+}
+
+void LCD_SetPointPixel(uint16_t usX,uint16_t usY,uint16_t usColor)	
+{	
+	if((usX<LCD_DEFAULT_WIDTH)&&(usY<LCD_DEFAULT_HEIGTH))
+  {
+		LCD_OpenWindow(usX,usY,1,1);
+		LCD_FillColor(1,usColor);
+	}
+}
+
+uint16_t LCD_GetPointPixel ( uint16_t usX, uint16_t usY )
+{ 
+	uint16_t usPixelData;
+	uint16_t usR=0, usG=0, usB=0 ;
+	LCD_SetCursor ( usX, usY );
+	
+	LCD_WRITE_CMD ( 0x2E );   /* 读数据 */
+	usR = LCD_READ_DATA (); 	/*FIRST READ OUT DUMMY DATA*/
+	
+	usR = LCD_READ_DATA ();  	/*READ OUT RED DATA  */
+	usB = LCD_READ_DATA ();  	/*READ OUT BLUE DATA*/
+	usG = LCD_READ_DATA ();  	/*READ OUT GREEN DATA*/
+	
+	usPixelData = (((usR>>11)<<11) | ((usG>>10)<<5) | (usB>>11));
+	return usPixelData;
+}
+void LCD_Clear(uint16_t usX,uint16_t usY,uint16_t usWidth,uint16_t usHeight,uint16_t usColor)
+{	 
+#if 0   /* 优化代码执行速度 */
+  uint32_t i;
+	uint32_t n,m;
+  LCD_OpenWindow(usX,usY,usWidth,usHeight); 
+  LCD_WRITE_CMD(0x2C);
+  
+  m=usWidth * usHeight;
+  n=m/8;
+  m=m-8*n;
+	for(i=0;i<n;i++)
+	{
+		LCD_WRITE_DATA(usColor);	
+    LCD_WRITE_DATA(usColor);	
+    LCD_WRITE_DATA(usColor);	
+    LCD_WRITE_DATA(usColor);	
+    
+    LCD_WRITE_DATA(usColor);	
+    LCD_WRITE_DATA(usColor);	
+    LCD_WRITE_DATA(usColor);	
+    LCD_WRITE_DATA(usColor);	
+	}
+  for(i=0;i<m;i++)
+	{
+		LCD_WRITE_DATA(usColor);	
+	}
+#else
+  LCD_OpenWindow(usX,usY,usWidth,usHeight);
+	LCD_FillColor(usWidth*usHeight,usColor);	
+#endif	
+}
+
+void BSP_LCD_Init(void)
+{
+  MX_FSMC_Init();
+	
+  ILI9488_REG_Config();
+  LCD_Clear(0,0,LCD_DEFAULT_WIDTH,LCD_DEFAULT_HEIGTH,BLACK);
+  HAL_Delay(20);
+}
+
+extern const unsigned char ucAscii_2412[95][48];
+
+void LCD_DispChar_EN( uint16_t usX, uint16_t usY, const char cChar, uint16_t usColor_Background, uint16_t usColor_Foreground)
+{
+	uint8_t ucTemp, ucRelativePositon, ucPage, ucColumn;
+  
+	ucRelativePositon = cChar - ' ';
+  
+	LCD_OpenWindow(usX,usY,12,24);
+	LCD_WRITE_CMD(0x2C);
+	
+	for(ucPage=0;ucPage<48;ucPage++)
+	{
+		ucTemp=ucAscii_2412[ucRelativePositon][ucPage];		
+		for(ucColumn=0;ucColumn<8;ucColumn++)
+		{
+			if(ucTemp&0x01)
+				LCD_WRITE_DATA(usColor_Foreground);			
+			else
+				LCD_WRITE_DATA(usColor_Background);								
+			ucTemp >>= 1;					
+		}	
+		ucPage++;
+		ucTemp=ucAscii_2412[ucRelativePositon][ucPage];
+		for(ucColumn=0;ucColumn<4;ucColumn++)
+		{
+			if(ucTemp&0x01)
+				LCD_WRITE_DATA(usColor_Foreground);			
+			else
+				LCD_WRITE_DATA(usColor_Background);								
+			ucTemp >>= 1;					
+		}	
+	}
+}
+
+void LCD_DispString_EN ( uint16_t usX, uint16_t usY, const char * pStr, uint16_t usColor_Background, uint16_t usColor_Foreground)
+{
+	while ( * pStr != '\0' )
+	{
+		if ( ( usX +  12 ) > LCD_DEFAULT_WIDTH )
+		{
+			usX = 0;
+			usY += 24;
+		}      
+		if ( ( usY +  24 ) > LCD_DEFAULT_HEIGTH )
+		{
+			usX = 0;
+			usY = 0;
+		}      
+		LCD_DispChar_EN ( usX, usY, * pStr, usColor_Background, usColor_Foreground);
+		pStr ++;      
+		usX += 12;
+	}
+}
+
+void ProgressBar(uint16_t x1,uint16_t y1,uint16_t x2,uint16_t y2,uint16_t percent,uint16_t color)
+{
+	uint16_t xend;
+	uint16_t i,j;
+	xend = x1 + (x2 - x1)*percent/100;
+	for (i = x1;i < xend;i++)
+	{
+		for (j = y1;j < y2;j++)
+		{
+			LCD_SetPointPixel(i,j,color);
+		}
+	}
+}
+//-------------------------------------------------------------------------------------------------------------------------
 void SystemClock_Config(void)
 {
 
@@ -251,7 +789,9 @@ void MX_GPIO_Init(void)
 }
 //-------------------------------------------------------------------------------------------------------------------------
 #define ADDLOG	1
+#define LCD_Display	1
 
+#define Dispaly_Color	DARKGREEN
 char * Week[]={
 " ",
 "Monday",
@@ -286,6 +826,16 @@ void USB_IAP()
 	uint32_t Read_data=0;
 	uint16_t br;
 	uint32_t file_size;
+	FLASH_EraseInitTypeDef FlashEraseInit;
+	uint32_t SectorError=0;	
+	#if LCD_Display
+	uint32_t percent;
+	char str[4];
+
+	LCD_DispString_EN(170,5,"Upgrading...",0,Dispaly_Color);
+	LCD_DispString_EN(20,40,"Main Board",0,Dispaly_Color);
+	LCD_DispString_EN(450,40,"%",0,Dispaly_Color);
+	#endif
 	f_res = f_mount(&fs,"0:",1);
 	if (f_res != FR_OK)
 	{
@@ -309,10 +859,25 @@ void USB_IAP()
 		{
 			printf("Total:%dByte\r\n",Read_data);
 			f_close(&file);
+			if (Read_data != file_size)
+			{
+				printf("Upgrade failed\r\n");	
+				#if LCD_Display
+				LCD_DispString_EN(140,200,"Upgrade Fault!",0,Dispaly_Color);
+				#endif
+				while(1);
+			}
 			break; 
 		}
 		iap_write_appbin(addrx,Receive_dat_buffer,br);
-		printf("Write%4d%%\r\n",Read_data*100/file_size);
+		percent = Read_data*100/file_size;
+		printf("Write%4d%%\r\n",percent);
+		#if LCD_Display
+		sprintf(str,"%3d",percent);
+		LCD_DispString_EN(410,40,str,0,Dispaly_Color);
+		ProgressBar(150,42,400,62,percent,Dispaly_Color);
+		#endif
+		
 		addrx+=2048;
 	}
 	//-----------------------------------
@@ -322,13 +887,32 @@ void USB_IAP()
 		#if ADDLOG
 			Log();
 		#endif
+		#if LCD_Display
+		LCD_DispString_EN(140,200,"Upgrade Completed!",0,Dispaly_Color);
+		//--------------------------------------------------------------------------------------------
+			if (*(volatile uint32_t *)0x080E0000!=0XFFFFFFFF)
+			{   
+				HAL_FLASH_Unlock();
+				FlashEraseInit.TypeErase=FLASH_TYPEERASE_SECTORS;
+				FlashEraseInit.Sector=FLASH_SECTOR_11;
+				FlashEraseInit.NbSectors=1; 
+				FlashEraseInit.VoltageRange=FLASH_VOLTAGE_RANGE_3;
+				HAL_FLASHEx_Erase(&FlashEraseInit,&SectorError);
+				HAL_FLASH_Lock();
+			}
+		//--------------------------------------------------------------------------------------------
+		HAL_Delay(1000);
+		#endif
 		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
 		HAL_UART_MspDeInit(&huart1);
 		//NVIC_SystemReset();
 		iap_load_app(FLASH_APP1_ADDR);
 	}else 
 	{
-			printf("Upgrade failed\r\n");	   
+		#if LCD_Display
+		LCD_DispString_EN(140,200,"Upgrade Fault!",0,Dispaly_Color);
+		#endif
+		printf("Upgrade failed\r\n");	   
 	}
 }
 
@@ -355,21 +939,32 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id)
       break; 
   }
 }
-
+//不同U盘识别时间不一定，用硬件条件触发，避免开机跳转慢
 int main(void)
 {
+	FLASH_EraseInitTypeDef FlashEraseInit;
+	uint32_t SectorError=0;
+	uint32_t tickstart;
   HAL_Init();
   SystemClock_Config();
 	MX_GPIO_Init();
 	MX_USART1_UART_Init();
 	
-	if (HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_0) == 1)
+	if ((HAL_GPIO_ReadPin(GPIOE,GPIO_PIN_0) == 1 ) && ((*(volatile uint32_t *)0x080E0000!=0XB9F9D0C2)))
 	{
 			printf("Jump to APP\r\n");
 			iap_load_app(FLASH_APP1_ADDR);
 	}
+
 	#if ADDLOG
-			MX_RTC_Init();
+		MX_RTC_Init();
+	#endif
+	
+	#if LCD_Display
+	BSP_LCD_Init();
+	LCD_BK_ON();
+	LCD_Clear(0,0,LCD_DEFAULT_WIDTH,LCD_DEFAULT_HEIGTH,0);
+	LCD_DispString_EN(170,5,"Initializing...",0,Dispaly_Color);
 	#endif
 
   if(FATFS_LinkDriver(&USBH_Driver, USBDISKPath) == 0)
@@ -380,6 +975,7 @@ int main(void)
     USBH_RegisterClass(&hUSBHost, USBH_MSC_CLASS);
     USBH_Start(&hUSBHost);      
   }
+	tickstart = HAL_GetTick();
 	while(1)
 	{
 		USBH_Process(&hUSBHost);
@@ -387,6 +983,25 @@ int main(void)
 		{
 			USB_IAP();
 			while(1);
+		}
+		if (HAL_GetTick()-tickstart > 5000)
+		{
+	#if LCD_Display
+			LCD_DispString_EN(100,5,"Timeout,Upgrade Fault!",0,Dispaly_Color);
+			HAL_Delay(1000);
+	#endif
+			if (*(volatile uint32_t *)0x080E0000!=0XFFFFFFFF)
+			{   
+				HAL_FLASH_Unlock();
+				FlashEraseInit.TypeErase=FLASH_TYPEERASE_SECTORS;
+				FlashEraseInit.Sector=FLASH_SECTOR_11;
+				FlashEraseInit.NbSectors=1; 
+				FlashEraseInit.VoltageRange=FLASH_VOLTAGE_RANGE_3;
+				HAL_FLASHEx_Erase(&FlashEraseInit,&SectorError);
+				HAL_FLASH_Lock();
+			}
+			printf("Timeout,Jump to APP\r\n");
+			iap_load_app(FLASH_APP1_ADDR);			
 		}
 	}
 }
