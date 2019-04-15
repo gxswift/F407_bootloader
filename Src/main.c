@@ -3,7 +3,6 @@
 #include "usbh_msc.h" 
 #include "ff.h"
 #include "ff_gen_drv.h"
-
 typedef enum {
   APPLICATION_IDLE = 0,  
   APPLICATION_READY,    
@@ -941,9 +940,11 @@ void USB_IAP()
 		HAL_Delay(1000);
 		#endif
 		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
+		USBH_DeInit(&hUSBHost);		
 		HAL_UART_MspDeInit(&huart1);
 			__HAL_RCC_RTC_DISABLE();
-		//NVIC_SystemReset();
+//			__set_FAULTMASK(1);
+//		NVIC_SystemReset();
 		iap_load_app(FLASH_APP1_ADDR);
 	}else 
 	{
@@ -1040,6 +1041,10 @@ int main(void)
 				HAL_FLASH_Lock();
 			}
 			printf("Timeout,Jump to APP\r\n");
+		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
+		USBH_DeInit(&hUSBHost);		
+		HAL_UART_MspDeInit(&huart1);
+			__HAL_RCC_RTC_DISABLE();
 			iap_load_app(FLASH_APP1_ADDR);			
 		}
 	}
