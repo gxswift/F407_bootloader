@@ -825,7 +825,7 @@ void MX_GPIO_Init(void)
 }
 //-------------------------------------------------------------------------------------------------------------------------
 #define ADDLOG	1
-#define LCD_Display	1
+#define LCD_Display	0
 
 #define Dispaly_Color	DARKGREEN
 char * Week[]={
@@ -864,8 +864,8 @@ void USB_IAP()
 	uint32_t file_size;
 	FLASH_EraseInitTypeDef FlashEraseInit;
 	uint32_t SectorError=0;	
+	uint32_t percent;	
 	#if LCD_Display
-	uint32_t percent;
 	char str[4];
 
 	LCD_DispString_EN(170,5,"Upgrading...",0,Dispaly_Color);
@@ -913,7 +913,6 @@ void USB_IAP()
 		LCD_DispString_EN(410,40,str,0,Dispaly_Color);
 		ProgressBar(150,42,400,62,percent,Dispaly_Color);
 		#endif
-		
 		addrx+=2048;
 	}
 	//-----------------------------------
@@ -939,12 +938,11 @@ void USB_IAP()
 		//--------------------------------------------------------------------------------------------
 		HAL_Delay(1000);
 		#endif
-		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
-		USBH_DeInit(&hUSBHost);		
-		HAL_UART_MspDeInit(&huart1);
-			__HAL_RCC_RTC_DISABLE();
-//			__set_FAULTMASK(1);
-//		NVIC_SystemReset();
+//		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
+//		USBH_DeInit(&hUSBHost);		
+//		HAL_UART_MspDeInit(&huart1);
+			__set_FAULTMASK(1);
+		NVIC_SystemReset();
 		iap_load_app(FLASH_APP1_ADDR);
 	}else 
 	{
@@ -1041,10 +1039,12 @@ int main(void)
 				HAL_FLASH_Lock();
 			}
 			printf("Timeout,Jump to APP\r\n");
-		HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
-		USBH_DeInit(&hUSBHost);		
-		HAL_UART_MspDeInit(&huart1);
-			__HAL_RCC_RTC_DISABLE();
+//			HAL_HCD_MspDeInit(&hhcd_USB_OTG_FS);
+//			USBH_DeInit(&hUSBHost);		
+//			HAL_UART_MspDeInit(&huart1);
+//				__HAL_RCC_RTC_DISABLE();
+			__set_FAULTMASK(1);
+			NVIC_SystemReset();
 			iap_load_app(FLASH_APP1_ADDR);			
 		}
 	}
